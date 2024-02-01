@@ -26,7 +26,7 @@ let rec helper s =
     s
   else 
     let subbed = String.sub s 1 (String.length s-1) in
-    let reved = string_rev(subbed) in 
+    let reved = helper(subbed) in 
     let first = s.[0] in 
     reved ^ (String.make 1 first)
 
