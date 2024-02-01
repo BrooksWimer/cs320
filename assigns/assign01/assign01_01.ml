@@ -21,5 +21,12 @@
 
  *)
 
-let string_rev (s : string) : string =
-  assert false (* REMOVE THIS LINE AND FILL IN YOUR SOLUTION *)
+let rec string_rev (s : string) : string =
+  if (String.length s) = 1 then
+    s
+  else 
+    let subbed = String.sub s 1 (String.length s-1) in
+    let reved = string_rev(subbed) in 
+    let first = s.[0] in 
+    reved ^ (String.make 1 first)
+

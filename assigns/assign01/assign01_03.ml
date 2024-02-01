@@ -23,5 +23,14 @@
 
  *)
 
+let rec fib_help n a b = 
+    if n = 0 then 
+      b
+    else if n = 1
+      then a+b
+    else 
+      fib_help (n-1) b (a+b)
+
 let fast_fib (n : int) : int =
-  assert false (* REMOVE THIS LINE AND FILL IN YOUR SOLUTION *)
+  fib_help n 0 1
+    

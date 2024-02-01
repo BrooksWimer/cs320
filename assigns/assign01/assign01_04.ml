@@ -16,5 +16,22 @@
 
  *)
 
+
+let rec find_cubes start current target =  
+    if start**3.0 >= target then 
+      0.0
+
+    else if current**3.0 >= target then 
+      find_cubes (start+.1.0) (start+.1.0) target
+
+    else if (start**3.0 +. current**3.0) = target then 
+      let rec_call = find_cubes start (current+.1.0) target in 
+        rec_call +. 1.0
+
+    else 
+      find_cubes start (current+.1.0) target
+      
 let taxicab (n : int) : int =
-  assert false (* REMOVE THIS LINE AND FILL IN YOUR SOLUTION *)
+  let x = find_cubes 1.0 1.0 (float_of_int n) in
+    int_of_float x
+

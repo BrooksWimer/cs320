@@ -14,5 +14,17 @@
 
  *)
 
+ let rec divisors x y =
+  if y = 1 then
+    1
+  else if (x mod y) = 0 && x <> y then
+    let rec_call = divisors x (y-1) in 
+      rec_call + y
+  else 
+    divisors x (y-1)
+
+
 let is_perfect (n : int) : bool =
-  assert false (* REMOVE THIS LINE AND FILL IN YOUR SOLUTION *)
+  let sum_divs = divisors n n in 
+    sum_divs = n
+  

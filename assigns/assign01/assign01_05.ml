@@ -36,6 +36,30 @@
    let _ = assert (block_text "ABCDEFGHIJ" 3 4 = "ABCD\nEFGH\nIJ")
 
  *)
+let rec dividing s start div_len str_len =
 
-let block_text (s : string) (min_width : int) (max_width : int) : string =
-  assert false (* REMOVE THIS LINE AND FILL IN YOUR SOLUTION *)
+  if (start + div_len) >= str_len then 
+    String.sub s start (str_len-start)
+  else 
+    let rec_call = dividing s (start+div_len) div_len str_len in 
+     let subbed = (String.sub s start div_len) in 
+      subbed ^ "\n" ^ rec_call
+
+
+
+let rec helper (s : string) (min_width : int) (max_width : int) (curr_width): string =
+  let str_len = String.length s in 
+      if curr_width = 0 then 
+          dividing s 0 max_width str_len
+      else 
+        let remainder = str_len mod curr_width in
+          if remainder >= min_width then
+            dividing s 0 curr_width str_len
+          else if (remainder = 0) && (curr_width >= min_width) then
+            dividing s 0 curr_width str_len
+          else 
+            helper s min_width max_width (curr_width-1)
+        
+
+let block_text (s : string) (min_width : int) (max_width : int) : string = 
+  helper s min_width max_width max_width 
