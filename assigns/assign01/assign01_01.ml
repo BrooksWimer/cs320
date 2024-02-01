@@ -21,7 +21,7 @@
 
  *)
 
-let rec string_rev (s : string) : string =
+let rec helper s =
   if (String.length s) = 1 then
     s
   else 
@@ -29,4 +29,7 @@ let rec string_rev (s : string) : string =
     let reved = string_rev(subbed) in 
     let first = s.[0] in 
     reved ^ (String.make 1 first)
+
+let string_rev (s : string) : string =
+  helper s
 
