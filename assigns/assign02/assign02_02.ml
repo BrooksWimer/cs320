@@ -30,4 +30,9 @@ type recipe = {
 }
 
 let recs_by_ingrs (l : recipe list) (s : ingr list) : recipe list =
-  assert false (* TODO *)
+    (* Function to check if all ingredients of a recipe are in the provided list of ingredients *)
+  let all_ingrs_included r =
+    List.for_all (fun ingr -> List.mem ingr s) r.ingrs
+  in
+  (* Filter recipes based on the all_ingrs_included predicate *)
+  List.filter all_ingrs_included l
