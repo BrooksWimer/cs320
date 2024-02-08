@@ -54,9 +54,6 @@ type user = {
   recent_posts : post list ;
 }
 
-let update_recent (u : user) (time : int) (stale : int) : user =
-  assert false (* TODO *)
-
 let p t = {title="";content="";timestamp=t}
 let mk op rp = {
   username = "" ;
@@ -71,3 +68,20 @@ let mk op rp = {
   old_posts = op;
   recent_posts = rp;
 }
+
+
+let update_recent (u : user) (time : int) (stale : int) : user =
+      let rec aux acc1 acc2 posts = 
+      match posts with
+      | [] -> (List.rev acc1, List.rev acc2)
+      | x :: xs -> 
+        if time - (x.timestamp) >= stale then
+          aux (x :: acc1) acc2 xs
+        else 
+          aux acc1 (x :: acc2) xs 
+      
+      in
+
+          let (update_old, updated_new) = aux u.old_posts [] u.recent_posts in 
+            mk (update_old) (updated_new)
+
