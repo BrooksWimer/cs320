@@ -22,5 +22,25 @@ type int_or_string
   = Int of int
   | String of string
 
-let convert (l : int_or_string list) : int_list_or_string_list list =
-  assert false (* TODO *)
+(* Helper function to add an element to the correct type of list in the accumulator *)
+let add_to_list acc elem = match acc, elem with
+  | IntList ints, Int i -> IntList (List.rev (i :: ints))
+  | StringList strs, String s -> StringList (List.rev  (s :: strs))
+
+(* The convert function *)
+let convert l =
+  let rec aux acc current = function
+    | [] -> List.rev (current :: acc) (* No more elements, add the current group to acc and reverse acc *)
+    | x :: xs -> (
+        match current, x with
+        | IntList il, Int i -> aux acc (add_to_list current x) xs
+        | StringList sl, String s -> aux acc (add_to_list current x) xs
+        | _, Int i -> aux (current :: acc) (IntList [i]) xs
+        | _, String s -> aux (current :: acc) (StringList [s]) xs
+      )
+  in
+  match l with
+  | [] -> []
+  | Int i :: xs -> aux [] (IntList [i]) xs
+  | String s :: xs -> aux [] (StringList [s]) xs
+
