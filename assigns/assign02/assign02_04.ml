@@ -25,4 +25,15 @@ type temp
   | Icy of int
 
 let reduce (l : temp list) : temp list =
-  assert false (* TODO *)
+   let rec aux acc reduction_occurred = function
+    | Hot i :: Icy j :: xs when i = j -> aux acc true xs
+    | Icy i :: Hot j :: xs when i = j -> aux acc true xs
+    | x :: xs -> aux (x :: acc) reduction_occurred xs
+    | [] -> (List.rev acc, reduction_occurred)
+  in
+  let rec reduce_aux lst =
+    let (reduced_list, reduction_occurred) = aux [] false lst in
+    if reduction_occurred then reduce_aux reduced_list
+    else reduced_list
+  in
+  reduce_aux l
