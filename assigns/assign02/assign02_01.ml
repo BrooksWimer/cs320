@@ -28,7 +28,7 @@ let add_to_list acc elem = match acc, elem with
   | StringList strs, String s -> StringList (List.rev  (s :: strs))
 
 (* The convert function *)
-let convert l =
+let convert (l : int_or_string list) : int_list_or_string_list list =
   let rec aux acc current = function
     | [] -> List.rev (current :: acc) (* No more elements, add the current group to acc and reverse acc *)
     | x :: xs -> (
