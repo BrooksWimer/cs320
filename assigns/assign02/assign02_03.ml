@@ -70,16 +70,16 @@ let mk op rp = {
 }
 
 let update_recent (u : user) (time : int) (stale : int) : user =
-  let now_old, still_recent = 
-    List.partition (fun post -> time - post.timestamp >= stale) u.recent_posts in
+  (* Step 1: Partition recent_posts into those that are stale and those that are not. *)
+  let stale_posts, fresh_posts = List.partition (fun post -> time - post.timestamp >= stale) u.recent_posts in
   
-  (* Assuming every post in now_old is indeed older than any post in old_posts,
-     we append them directly to old_posts. This keeps the logic simple and direct,
-     based on the problem statement's guarantees. *)
-  let merged_old_posts = u.old_posts @ now_old in
-
-  (* Create a new user record with the updated lists. *)
-  mk merged_old_posts still_recent
+  (* Step 2: Merge stale posts into old_posts. Since both lists are already in decreasing order,
+     and all stale_posts are guaranteed to be older than any in fresh_posts but not necessarily older
+     than all in old_posts, we append them and then sort to ensure the order. *)
+  let updated_old_posts = List.sort (fun p1 p2 -> p2.timestamp - p1.timestamp) (u.old_posts @ stale_posts) in
+  
+  (* Step 3: Create a new user record with the updated lists. *)
+  mk updated_old_posts fresh_posts
 
 
 
