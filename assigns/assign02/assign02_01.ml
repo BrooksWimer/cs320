@@ -14,33 +14,37 @@
 
 *)
 
-type int_list_or_string_list
-  = IntList of int list
-  | StringList of string list
+type int_list_or_string_list = IntList of int list | StringList of string list
+type int_or_string = Int of int | String of string
 
-type int_or_string
-  = Int of int
-  | String of string
-
-(* Helper function to add an element to the correct type of list in the accumulator *)
-let add_to_list acc elem = match acc, elem with
-  | IntList ints, Int i -> IntList (List.rev (i :: ints))
-  | StringList strs, String s -> StringList (List.rev  (s :: strs))
-
-(* The convert function *)
 let convert (l : int_or_string list) : int_list_or_string_list list =
-  let rec aux acc current = function
-    | [] -> List.rev (current :: acc) (* No more elements, add the current group to acc and reverse acc *)
-    | x :: xs -> (
-        match current, x with
-        | IntList il, Int i -> aux acc (add_to_list current x) xs
-        | StringList sl, String s -> aux acc (add_to_list current x) xs
-        | _, Int i -> aux (current :: acc) (IntList [i]) xs
-        | _, String s -> aux (current :: acc) (StringList [s]) xs
-      )
+  (* Auxiliary function to process the list. *)
+  let rec aux acc current_ints current_strs = function
+    | [] -> 
+        (* Finalize the accumulation by handling any remaining ints or strings. *)
+        let acc = match current_ints with
+                  | [] -> acc
+                  | _ -> IntList (List.rev current_ints) :: acc in
+        let acc = match current_strs with
+                  | [] -> acc
+                  | _ -> StringList (List.rev current_strs) :: acc in
+        List.rev acc
+    | Int i :: xs ->
+        (* When encountering an Int, add it to the current_ints and reset current_strs. *)
+        if current_strs <> [] then
+          aux (StringList (List.rev current_strs) :: acc) [i] [] xs
+        else
+          aux acc (i :: current_ints) [] xs
+    | String s :: xs ->
+        (* When encountering a String, add it to the current_strs and reset current_ints. *)
+        if current_ints <> [] then
+          aux (IntList (List.rev current_ints) :: acc) [] [s] xs
+        else
+          aux acc [] (s :: current_strs) xs
   in
-  match l with
-  | [] -> []
-  | Int i :: xs -> aux [] (IntList [i]) xs
-  | String s :: xs -> aux [] (StringList [s]) xs
+  aux [] [] [] l
 
+(* Example usage and assertion to validate the function's correctness. *)
+let test_in = [Int 2; Int 3; String "a"; String "b"; Int 4; String "c"]
+let test_out = [IntList [2;3]; StringList ["a";"b"]; IntList [4]; StringList ["c"]]
+let () = assert (convert test_in = test_out)
