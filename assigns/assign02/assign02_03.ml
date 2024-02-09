@@ -71,17 +71,14 @@ let mk op rp = {
 
 
 let update_recent (u : user) (time : int) (stale : int) : user =
-      let rec aux acc1 acc2 posts = 
-      match posts with
-      | [] -> (List.rev acc1, List.rev acc2)
-      | x :: xs -> 
-        if time - (x.timestamp) >= stale then
-          aux (x :: acc1) acc2 xs
-        else 
-          aux acc1 (x :: acc2) xs 
-      
-      in
+  (* Separate recent_posts into those that are now considered old and those that remain recent. *)
+  let now_old, still_recent = 
+    List.partition (fun post -> time - post.timestamp >= stale) u.recent_posts in
+  
+  (* Merge the newly old posts with existing old_posts, ensuring the timestamp order is maintained. *)
+  let merged_old_posts = List.merge (fun p1 p2 -> p2.timestamp - p1.timestamp) u.old_posts now_old in
 
-          let (update_old, updated_new) = aux u.old_posts [] u.recent_posts in 
-            mk (update_old) (updated_new)
+  (* Use mk function to create a new user record with updated old and recent posts. *)
+  mk merged_old_posts still_recent
+
 
