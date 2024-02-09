@@ -45,44 +45,27 @@ type point = { x: int; y: int; }
 
 (* The all_paths function generates all possible paths from stp to endp with exactly len steps. *)
 let all_paths len (stp: point) (endp: point) : (dir * int) list list =
-  (* Directly return an empty list for odd lengths when stp and endp are the same,
-     since it's impossible to return to the origin in an odd number of steps
-     while adhering to the rule against repeating directions consecutively. *)
-  if len mod 2 = 1 && stp = endp then []
+  if len = 0 then 
+    if stp = endp then [[]] else [] (* Only an empty path can have 0 length and be valid *)
+  else if len mod 2 = 1 then [] (* Odd lengths cannot return to origin or satisfy alternating constraint *)
   else
-    (* Defines a helper function to simulate moving in a direction from a given point. *)
-    let move (p: point) (d: dir) : point =
-      match d with
-      | N -> {p with y = p.y + 1}
-      | S -> {p with y = p.y - 1}
-      | E -> {p with x = p.x + 1}
-      | W -> {p with x = p.x - 1} in
-
-    (* Recursive function to generate all paths of a given length.
-       It concatenates every possible direction to each path from the previous step. *)
-    let rec generate_paths len =
-      if len = 0 then [[]]  (* Base case: no steps left to take. *)
-      else
-        let dirs = [N; S; E; W] in  (* All possible directions. *)
-        List.concat_map (fun d ->
-          (* For each direction, add it to the start of all paths generated for one less step,
-             creating new paths that are one step longer. *)
-          List.map (fun path -> (d, 1) :: path) (generate_paths (len - 1))
-        ) dirs in
-
-    (* Merges consecutive steps in the same direction into a single step with summed lengths.
-       This post-processing step simplifies paths to match the expected output format. *)
-    let rec merge_consecutive = function
-      | (d1, n1) :: (d2, n2) :: rest when d1 = d2 -> merge_consecutive ((d1, n1 + n2) :: rest)
-      | h :: t -> h :: merge_consecutive t
-      | [] -> [] in
-
-    (* Generate all paths, then merge consecutive steps, and finally filter
-       to keep only those paths that precisely lead to the endp. *)
-    let paths = generate_paths len in
-    let merged_paths = List.map merge_consecutive paths in
-    List.filter (fun path ->
-      (* Calculate the final position after following a path, and keep the path if it ends at endp. *)
-      let final_pos = List.fold_left (fun acc (d, n) -> move acc d) stp path in
-      final_pos = endp
-    ) merged_paths
+    let rec generate_paths acc depth last_dir =
+      if depth = len then 
+        if stp = endp then [List.rev acc] else []
+      else 
+        let possible_dirs = [N; S; E; W] |> List.filter ((<>) last_dir) in
+        List.fold_left (fun acc dir ->
+          let next_step = match dir with
+            | N -> {stp with y = stp.y + 1}
+            | S -> {stp with y = stp.y - 1}
+            | E -> {stp with x = stp.x + 1}
+            | W -> {stp with x = stp.x - 1}
+          in
+          if depth + 1 = len then
+            if next_step = endp then acc @ [[(dir, 1)]]
+            else acc
+          else
+            generate_paths ((dir, 1)::acc) (depth + 1) dir |> List.map (fun path -> (dir, 1) :: path)
+        ) [] possible_dirs
+    in
+    generate_paths [] 0 None
