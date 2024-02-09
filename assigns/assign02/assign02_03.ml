@@ -70,17 +70,14 @@ let mk op rp = {
 }
 
 let update_recent (u : user) (time : int) (stale : int) : user =
-  (* Step 1: Partition recent_posts into those that are stale and those that are not. *)
-  let stale_posts, fresh_posts = List.partition (fun post -> time - post.timestamp >= stale) u.recent_posts in
+  (* Separate recent_posts into those that should be moved to old_posts (stale ones)
+     and those that should remain in recent_posts. *)
+  let stale_posts, fresh_recent_posts = List.partition (fun post -> time - post.timestamp >= stale) u.recent_posts in
   
-  (* Step 2: Merge stale posts into old_posts. Since both lists are already in decreasing order,
-     and all stale_posts are guaranteed to be older than any in fresh_posts but not necessarily older
-     than all in old_posts, we append them and then sort to ensure the order. *)
-  let updated_old_posts = List.sort (fun p1 p2 -> p2.timestamp - p1.timestamp) (u.old_posts @ stale_posts) in
+  let updated_old_posts = stale_posts @ u.old_posts in
   
-  (* Step 3: Create a new user record with the updated lists. *)
-  mk updated_old_posts fresh_posts
-
+  (* Create a new user record with updated old and recent posts lists. *)
+  { u with old_posts = updated_old_posts; recent_posts = fresh_recent_posts }
 
 
 
