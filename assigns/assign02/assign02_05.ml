@@ -43,29 +43,33 @@ type dir = N | S | E | W
 type step = dir * int
 type point = { x: int; y: int; }
 
-(* The all_paths function generates all possible paths from stp to endp with exactly len steps. *)
-let all_paths len (stp: point) (endp: point) : (dir * int) list list =
-  if len = 0 then 
-    if stp = endp then [[]] else [] (* Only an empty path can have 0 length and be valid *)
-  else if len mod 2 = 1 then [] (* Odd lengths cannot return to origin or satisfy alternating constraint *)
+type dir = N | S | E | W
+type point = { x : int; y : int; }
+
+let rec all_paths len stp endp =
+  let move (dir, steps) {x; y} = match dir with
+    | N -> {x; y = y + steps}
+    | S -> {x; y = y - steps}
+    | E -> {x = x + steps; y}
+    | W -> {x = x - steps; y} in
+  
+  let append_step path dir = 
+    match path with
+    | (d, n) :: t when d = dir -> (dir, n + 1) :: t
+    | _ -> (dir, 1) :: path in
+  
+  let rec explore_paths len last_dir path stp =
+    if len = 0 then
+      if stp = endp then [List.rev path] else []
+    else
+      [N; S; E; W]
+      |> List.filter ((<>) last_dir)
+      |> List.concat_map (fun dir ->
+           explore_paths (len - 1) (Some dir) (append_step path dir) (move (dir, 1) stp)) in
+  
+  if len = 0 then
+    if stp = endp then [[]] else []
+  else if len mod 2 = 1 && stp = endp then
+    [] (* No valid paths for odd lengths when starting and ending points are the same *)
   else
-    let rec generate_paths acc depth last_dir =
-      if depth = len then 
-        if stp = endp then [List.rev acc] else []
-      else 
-        let possible_dirs = [N; S; E; W] |> List.filter ((<>) last_dir) in
-        List.fold_left (fun acc dir ->
-          let next_step = match dir with
-            | N -> {stp with y = stp.y + 1}
-            | S -> {stp with y = stp.y - 1}
-            | E -> {stp with x = stp.x + 1}
-            | W -> {stp with x = stp.x - 1}
-          in
-          if depth + 1 = len then
-            if next_step = endp then acc @ [[(dir, 1)]]
-            else acc
-          else
-            generate_paths ((dir, 1)::acc) (depth + 1) dir |> List.map (fun path -> (dir, 1) :: path)
-        ) [] possible_dirs
-    in
-    generate_paths [] 0 None
+    explore_paths len None [] stp
