@@ -25,5 +25,24 @@ type 'a concatlist
   | Single of 'a
   | Concat of 'a concatlist * 'a concatlist
 
+let rec merge_helper x currlist = 
+  match currlist with
+  | [] -> [x] 
+  | head :: tail ->
+      if x <= head then
+        x :: currlist 
+      else
+        head :: (merge_helper x tail)  
+
 let sort (l : 'a concatlist) : 'a list =
-  assert false (* TODO *)
+  
+  let rec splitter concated templist = 
+    match concated with
+      | Nil -> templist
+      | Single x -> splitter Nil (merge_helper x templist)
+      | Concat (left, right) -> 
+        let new_left = splitter left templist in 
+        splitter right new_left
+
+  in 
+  splitter l []
