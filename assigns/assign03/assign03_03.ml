@@ -48,5 +48,22 @@ type bexp =
   | And of bexp * bexp
   | Or of bexp * bexp
 
-let eval (v : (string * bool) list) (e : bexp) : bool option =
-  assert false (* TODO *)
+
+
+
+let rec eval (v : (string * bool) list) (e : bexp) : bool option =
+  match e with
+  | Var x -> 
+      (try Some (List.assoc x v) with Not_found -> None)  (* Direct lookup *)
+  | Not e -> 
+      (match eval v e with
+      | Some b -> Some (not b)  (* Direct evaluation *)
+      | None -> None)  (* Variable not found *)
+  | And (e1, e2) ->
+      (match eval v e1, eval v e2 with
+      | Some b1, Some b2 -> Some (b1 && b2)  (* Evaluate if both are Some *)
+      | _ -> None)  (* At least one is None *)
+  | Or (e1, e2) ->
+      (match eval v e1, eval v e2 with
+      | Some b1, Some b2 -> Some (b1 || b2)  (* Evaluate if both are Some *)
+      | _ -> None)  (* At least one is None *)
