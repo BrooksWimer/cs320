@@ -62,7 +62,18 @@ let rec delay_cons (f : int forklist) : int forklist = match f with
 
 let rec delay_cons (f : int forklist) : int forklist =
   match f with
-  | Nil | Cons (_, Nil) -> f
-  | Cons (x, Fork (y, l, r)) -> Fork (y, delay_cons (Cons (x, l)), delay_cons r)
-  | Cons (x, y) -> Cons (x, delay_cons y)
-  | Fork (x, l, r) -> Fork (x, delay_cons l, delay_cons r)
+  | Nil | Cons (_, Nil) -> f  (* Base cases, return as is *)
+  | Cons (x, Fork (y, l, r)) -> 
+      (* Directly handle Cons followed by Fork by moving the Cons inside the branches of the Fork *)
+      Fork (y, delay_cons (Cons (x, l)), delay_cons r)
+  | Cons (x, Cons (y, z)) ->
+      (* For a Cons containing a Cons, delay_cons on the inner structure first *)
+      let adjusted_inner = delay_cons (Cons (y, z)) in
+      (* Now handle the current Cons with the adjusted inner structure *)
+      begin
+        match adjusted_inner with
+        | Fork _ as forked -> delay_cons (Cons (x, forked))  (* If adjustment resulted in a Fork, reprocess *)
+        | _ -> Cons (x, adjusted_inner)  (* If no Fork inside, simply reconstruct the Cons *)
+      end
+  | Cons (x, y) -> Cons (x, delay_cons y)  (* Other Cons cases, recursively delay_cons on y *)
+  | Fork (x, l, r) -> Fork (x, delay_cons l, delay_cons r)  (* Recursively process Fork branches *)
