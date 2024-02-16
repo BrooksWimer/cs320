@@ -61,8 +61,8 @@ let rec delay_cons (f : int forklist) : int forklist = match f with
 *)
 
 let rec delay_cons (f : int forklist) : int forklist =
-  match fl with
-  | Nil | Cons (_, Nil) -> fl
+  match f with
+  | Nil | Cons (_, Nil) -> f
   | Cons (x, Fork (y, l, r)) -> Fork (y, delay_cons (Cons (x, l)), delay_cons r)
   | Cons (x, y) -> Cons (x, delay_cons y)
   | Fork (x, l, r) -> Fork (x, delay_cons l, delay_cons r)
