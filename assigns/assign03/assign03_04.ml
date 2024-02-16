@@ -148,24 +148,31 @@ let mkMatrix (rs : 'a list list) : ('a matrix, error) result =
     
         check_even_rows rs row_len 0
 
-(*
+
 
 let transpose (m : 'a matrix) : 'a matrix =
   let row_len = m.num_rows in 
-  let col_len = m.num_cols in 
+  let col_len = m.num_cols in
+  (* Adjusted to directly handle single row or single column matrices *)
+  if col_len = 1 then
+    let combined = List.flatten m.rows in
+    make_matrix col_len row_len [combined]
+  else
   let rec transp_builder curr_row start_matrix end_matrix = 
-    if start_matrix = [] then List.rev end_matrix 
-    else if (List.length curr_row) = row_len then 
+    if (List.length curr_row) = row_len then
       transp_builder [] start_matrix (curr_row :: end_matrix)
     else 
       let initial_row = List.hd start_matrix in 
+      let tail_matrix = List.tl start_matrix in
       match initial_row with
       | [] -> List.rev end_matrix
-      | x :: xs -> transp_builder (List.rev(x :: curr_row)) (List.rev (xs :: start_matrix)) end_matrix
+      | x :: xs -> transp_builder (List.rev(x :: curr_row)) (List.rev (xs :: tail_matrix)) end_matrix
 
   in 
   let transp_list = (transp_builder [] m.rows []) in 
   make_matrix col_len row_len transp_list
+
+
 
 let dot_product row col =
   List.fold_left2 (fun acc x y -> acc +. (x *. y)) 0.0 row col
@@ -191,4 +198,4 @@ let multiply (m : float matrix) (n : float matrix) : (float matrix, error) resul
       num_cols = n.num_cols;
       rows = result_rows;
     }
-*)
+
