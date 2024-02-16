@@ -81,7 +81,7 @@
      }
 
    let b =
-     { numn_rows = 1 ;
+     { num_rows = 1 ;
        num_cols = 2 ;
        rows = [[1.; 2.]] ;
      }
@@ -148,6 +148,8 @@ let mkMatrix (rs : 'a list list) : ('a matrix, error) result =
     
         check_even_rows rs row_len 0
 
+(*
+
 let transpose (m : 'a matrix) : 'a matrix =
   let row_len = m.num_rows in 
   let col_len = m.num_cols in 
@@ -189,3 +191,4 @@ let multiply (m : float matrix) (n : float matrix) : (float matrix, error) resul
       num_cols = n.num_cols;
       rows = result_rows;
     }
+*)
