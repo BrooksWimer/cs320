@@ -115,11 +115,77 @@ type 'a matrix = {
   rows : ('a list) list ;
 }
 
+let make_matrix num_rows num_cols rows = 
+  let my_matrix = {
+    num_rows = num_rows;
+    num_cols = num_cols;
+    rows = rows;
+  } in 
+  my_matrix
+
 let mkMatrix (rs : 'a list list) : ('a matrix, error) result =
-  assert false (* TODO *)
+  if (List.length rs) = 0 then
+    Error ZeroRows
+
+  else
+    let head = List.hd rs in
+    let row_len = List.length head in
+    let rec check_even_rows rs_rec row_len row_count = 
+    match rs_rec with 
+    | [] -> (
+        if (row_len = 0) then 
+          Error ZeroCols
+        else 
+          Ok (make_matrix row_count row_len rs)
+    )
+    | x :: xs -> (
+        if (List.length x) = row_len then 
+          check_even_rows xs row_len (row_count+1)
+        else 
+          Error UnevenRows
+    )
+    in
+    
+        check_even_rows rs row_len 0
 
 let transpose (m : 'a matrix) : 'a matrix =
-  assert false (* TODO *)
+  let row_len = m.num_rows in 
+  let col_len = m.num_cols in 
+  let rec transp_builder curr_row start_matrix end_matrix = 
+    if start_matrix = [] then List.rev end_matrix 
+    else if (List.length curr_row) = row_len then 
+      transp_builder [] start_matrix (curr_row :: end_matrix)
+    else 
+      let initial_row = List.hd start_matrix in 
+      match initial_row with
+      | [] -> List.rev end_matrix
+      | x :: xs -> transp_builder (List.rev(x :: curr_row)) (List.rev (xs :: start_matrix)) end_matrix
+
+  in 
+  let transp_list = (transp_builder [] m.rows []) in 
+  make_matrix col_len row_len transp_list
+
+let dot_product row col =
+  List.fold_left2 (fun acc x y -> acc +. (x *. y)) 0.0 row col
+
+let rec get_col n matrix =
+  match matrix with
+  | [] -> []
+  | row :: rest -> (List.nth row n) :: get_col n rest
 
 let multiply (m : float matrix) (n : float matrix) : (float matrix, error) result =
-  assert false (* TODO *)
+  if m.num_cols <> n.num_rows then
+    Error MulMismatch
+  else
+    let result_rows =
+      List.map (fun m_row ->
+        List.init n.num_cols (fun i ->
+          dot_product m_row (get_col i n.rows)
+        )
+      ) m.rows
+    in
+    Ok {
+      num_rows = m.num_rows;
+      num_cols = n.num_cols;
+      rows = result_rows;
+    }
