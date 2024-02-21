@@ -29,4 +29,11 @@
 *)
 
 let apply_cycle (funcs : ('a -> 'a) list) (n : int) (x : 'a) : 'a =
-  assert false (* TODO *)
+  
+  let rec helper funcs n a = 
+    match n, funcs with 
+    | 0, _ -> a 
+    | y, (x :: xs) -> helper (xs @ [x]) (y-1) (x a)
+
+  in 
+  helper funcs (max n 0) x 
