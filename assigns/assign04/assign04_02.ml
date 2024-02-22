@@ -53,4 +53,13 @@ let walks
     (g : 'a -> 'a -> bool)
     (len : int)
     (paths_starts : (('a -> 'a) * 'a) list) : 'a list =
-  assert false (* TODO *)
+
+  let rec validate_path f x len =
+    if len <= 0 then Some x
+    else if (g x (f x)) then validate_path f (f x) (len-1)
+    else None
+
+  in 
+
+  List.filter_map (fun (f, start) -> validate_path f start len) paths_starts
+
