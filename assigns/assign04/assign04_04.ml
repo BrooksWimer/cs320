@@ -78,22 +78,43 @@
    (* ( 1 + 2x + 3x^2 ) ( 4 + 5x ) = 4 + 13x + 22x^2 + 15x^3 *)
 *)
 
-let rec map2 (f : 'a -> 'b -> 'c) (l : 'a list) (r : 'b list) : 'c list =
-  assert false (* TODO *)
+ [[0; 0; 12]; [0; 8; 15]; [4; 10; 0]; [5; 0; 0]]
+
+let rec map2 (f : 'a -> 'b -> 'c) (l : 'a list) (r : 'b list) : 'c list = 
+  match l, r with 
+  | _, [] -> []
+  | [], _ -> [] 
+  | (head1 :: tail1), (head2 :: tail2) -> (f head1 head2) :: (map2 f tail1 tail2)
 
 let consecutives (len : int) (l : 'a list) : 'a list list =
-  assert false (* TODO *)
+  if List.length l = 0 then [[]] else 
+  let rec helper list curr_list curr_len curr_acc acc start_len = 
+    match curr_list with 
+    | [] -> List.rev acc
+    | x :: xs -> ( 
+      if curr_len = 0 then 
+        helper (List.tl list) (List.tl list) (start_len-1) [] (List.rev (x :: curr_acc) :: acc) start_len
+      else 
+        helper list xs (curr_len-1) (x :: curr_acc) acc start_len
+    )
+  in helper l l ((min len (List.length l))-1) [] [] (min len (List.length l))
+
 
 let list_conv
     (f : 'a list -> 'b list -> 'c)
     (l : 'a list)
     (r : 'b list) : 'c list =
-  List.map (f l) (consecutives (List.length l) r)
+  List.map (f l) (consecutives (List.length l) r)  
+
 
 let poly_mult_helper (u : int list) (v : int list) : int =
-  assert false (* TODO *)
+  let u = List.rev u in 
+  let dot_product = List.fold_left2 (fun acc x y -> acc + (x * y)) 0 u v in
+  dot_product
 
 let poly_mult (p : int list) (q : int list) : int list =
   let padding = List.init (List.length p - 1) (fun _ -> 0) in
   let padded_q = padding @ q @ padding in
   list_conv poly_mult_helper p padded_q
+
+
