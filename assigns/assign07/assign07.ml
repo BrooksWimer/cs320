@@ -105,8 +105,41 @@ type token
   | PdT             (* . *)
   | EOFT            (* end of file *)
 
+
+let rec drop_leading_whitespace chars =
+    match chars with
+    | ' ' :: rest -> drop_leading_whitespace rest  (* Space *)
+    | '\t' :: rest -> drop_leading_whitespace rest (* Tab *)
+    | '\n' :: rest -> drop_leading_whitespace rest (* Newline *)
+    | '\r' :: rest -> drop_leading_whitespace rest
+    | _ -> chars  (* Anything else is not a leading whitespace *)
+  
+let parse_ntm l =
+  let spanned, rest = span (fun letter -> 'a' <= letter && letter <= 'z') l in
+  match rest with
+  | '>' :: rest2 -> (
+    let id = String.concat "" (List.map (String.make 1) spanned) in
+    Some (NtmT id, rest2)
+  )
+  | _ -> None
+
+let parse_tm l = 
+  let spanned, rest = span (fun letter -> 'a' <= letter && letter <= 'z') l in
+  match rest with
+  | ' ' :: rest2 -> (
+    let id = String.concat "" (List.map (String.make 1) spanned) in
+    Some (TmT id, rest)
+  )
+  | _ -> None
+
 let next_token (cs : char list) : (token * char list) option =
-  assert false (* TODO *)
+  let stripped_chars = drop_leading_whitespace cs in 
+  match stripped_chars with 
+  | ':' :: ':' :: '=' :: rest -> Some (EqT, rest)
+  | '<' :: rest -> parse_ntm rest
+  | '.' :: rest -> Some (PdT, rest)
+  | [] -> Some (EOFT, [])
+  | _ -> parse_tm stripped_chars
 
 let tokenize (s : string) : (token list) option =
   let rec go cs =
@@ -224,7 +257,7 @@ let parse_rule (ts : token list) : (rule * token list) option =
 
 let rec parse_grammar (ts : token list) : grammar * token list =
   assert false (* TODO *)
-
+(*
 let parse_and_check (s : string) : grammar option =
   match tokenize s with
   | None -> None
@@ -233,7 +266,7 @@ let parse_and_check (s : string) : grammar option =
     if List.is_empty rest
     then Some g
     else None
-
+*)
 (*
 let _ = assert (parse_sentform [NtmT "a"; TmT "b"; NtmT "a"; PdT; PdT; PdT] = Some ([NT "a"; T "b"; NT "a"], [PdT; PdT; PdT]))
 let _ = assert (parse_sentform [PdT; PdT; PdT] = None)
