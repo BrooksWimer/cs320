@@ -125,12 +125,10 @@ let parse_ntm l =
 
 let parse_tm l = 
   let spanned, rest = span (fun letter -> 'a' <= letter && letter <= 'z') l in
-  match rest with
-  | ' ' :: rest2 -> (
-    let id = String.concat "" (List.map (String.make 1) spanned) in
-    Some (TmT id, rest)
-  )
-  | _ -> None
+  
+  let id = String.concat "" (List.map (String.make 1) spanned) in
+  Some (TmT id, rest)
+
 
 let next_token (cs : char list) : (token * char list) option =
   let stripped_chars = drop_leading_whitespace cs in 
@@ -160,7 +158,7 @@ let _ = assert(next_token (explode "   term  term ") = Some (TmT "term", explode
 let _ = assert(next_token (explode "...") = Some (PdT, explode ".."))
 let _ = assert(next_token (explode " \n \t \r   ") = Some (EOFT, []))
 let _ = assert(next_token (explode "<not-good>") = None)
-
+next_token (explode " a<b>a.")
 let _ = assert(tokenize "..::=" = Some [PdT;PdT;EqT])
 let _ = assert(tokenize "<a> ::= aab a<b>a." = Some [NtmT "a"; EqT; TmT "aab"; TmT "a"; NtmT "b"; TmT "a"; PdT])
 let _ = assert(tokenize "<a> ::= aab a<no-good>a." = None)
@@ -255,23 +253,53 @@ let _ = assert (expand_leftmost r [NT "a"; T "b"; NT "a"] = [T "a"; NT "a"; T "b
 *)
 
 let rec parse_sentform (ts : token list) : (sentform * token list) option =
-  assert false (* TODO *)
+  let rec parsing accum ts =
+    match ts with 
+    | (NtmT x :: rest) -> parsing (accum @ [NT x])  rest
+    | (TmT y :: rest) ->  parsing (accum @ [T y]) rest 
+    | _ -> Some (accum, ts) 
+  in
+  let first_term = List.hd ts in 
+  match first_term with 
+  | (NtmT x) | (TmT x) -> parsing [] ts 
+  | _ -> None 
 
 let parse_rule (ts : token list) : (rule * token list) option =
-  assert false (* TODO *)
+  match parse_sentform ts with 
+  | Some (x, y) -> (
+    match (x, y) with 
+    | (([NT z]), (EqT :: rest)) -> (
+    match parse_sentform rest with
+    | Some (sents, PdT :: remain) -> Some((z, sents), remain) 
+    | _ -> None  
+)
+    | _ -> None
+  )
+  | None -> None 
 
 let rec parse_grammar (ts : token list) : grammar * token list =
-  assert false (* TODO *)
-(*
+  match parse_rule ts with
+  | Some (x, []) -> ([x], []) 
+  | Some (x, y) -> 
+      let (parsed_rules, remaining_tokens) = parse_grammar y in
+      (x :: parsed_rules, remaining_tokens)
+  | None -> ([], ts)
+  
+
+let is_empty lst = 
+  match lst with
+  | [] -> true
+  | _ -> false
+
 let parse_and_check (s : string) : grammar option =
   match tokenize s with
   | None -> None
   | Some ts ->
     let (g, rest) = parse_grammar ts in
-    if List.is_empty rest
+    if is_empty rest
     then Some g
     else None
-*)
+
 (*
 let _ = assert (parse_sentform [NtmT "a"; TmT "b"; NtmT "a"; PdT; PdT; PdT] = Some ([NT "a"; T "b"; NT "a"], [PdT; PdT; PdT]))
 let _ = assert (parse_sentform [PdT; PdT; PdT] = None)
@@ -287,6 +315,12 @@ let simple_test = "
   <c> ::= d .
   <c> ::= e f .
   <c> ::= g .
+"
+
+let simple_test2 = "
+  <a> ::= a .
+  <b> ::= .
+  
 "
 
 let simple_test_out =
