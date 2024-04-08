@@ -185,8 +185,9 @@ type grammars = grammar list
    For testing purposes, you SHOULD NOT consume whitespace before or
    after a grammar identifier.
 *)
-let parse_g_ident : string parser = (* TODO *)
-  assert false
+let parse_g_ident : string parser = 
+  let upper = many1 (satisfy is_upper_case) in
+  upper >|= implode  
 
 (* A terminal symbol is ANY sequence of characters between two single
    quotes, e.g.,
@@ -200,8 +201,10 @@ let parse_g_ident : string parser = (* TODO *)
    after terminal symbols.
 
 *)
-let parse_term : symbol parser = (* TODO *)
-  assert false
+let parse_term : symbol parser = 
+  (char '\'') >>
+  (many (satisfy ((<>) '\'')) >|= implode) <<
+  (char '\'') >|= fun x -> T x
 
 (* A nonterminal symbols is given by the following grammar:
 
@@ -222,8 +225,23 @@ let parse_term : symbol parser = (* TODO *)
    after a nonterminal symbol.
 
 *)
-let parse_nonterm : symbol parser = (* TODO *)
-  assert false
+
+let parse_nonterm : symbol parser = 
+  let optional_g_ident = optional (parse_g_ident << char '.') in
+  let lower = many1 (satisfy is_lower_case) in
+  let rest = map2 (fun x xs -> x :: xs) (char '-') lower in
+  let cs = map2 (fun xs xss -> List.concat (xs :: xss)) lower (many rest) in
+  let identifier = char '<' >> cs << char '>' >|= implode in
+  
+  optional_g_ident >>= fun g_ident_opt ->
+  identifier >|= fun id ->
+  match g_ident_opt with
+  | Some g_ident -> NTRef(g_ident, id)
+  | None -> NT(id)                
+      
+      
+
+
 
 (* `parse_symbol` parses either a terminal, a nonterminal symbol or a
    nonterminal reference.
@@ -234,8 +252,8 @@ let parse_nonterm : symbol parser = (* TODO *)
    after symbols.
 
 *)
-let parse_symbol : symbol parser = (* TODO *)
-  assert false
+let parse_symbol : symbol parser = 
+  parse_term <|> parse_nonterm 
 
 (* A complex symbol is given by the following grammar:
 
@@ -252,8 +270,44 @@ let parse_symbol : symbol parser = (* TODO *)
    SHOULD consume whitespace after.
 
 *)
-let parse_symbol_complex : symbol_complex parser =
-  assert false
+
+let parse_empty = 
+  ws >> char 'E' >> char 'M' >> char 'P' >> char 'T' >> char 'Y' >> pure []
+
+(* Parses a sequence of symbols, handling the "EMPTY" case explicitly *)
+let parse_symbols : symbol list parser = 
+  (keyword "EMPTY" >| []) <|> 
+  (many (ws >> parse_symbol << ws))
+  
+
+(* Parses an alternative list of symbol sequences, separated by '|' *)
+let parse_alt_symbol_list : symbol list list parser =
+  map2
+    (fun x xs -> x :: xs)
+    parse_symbols
+    (many ((keyword "|") >> parse_symbols))
+  
+let parse_curly = 
+    char '{' >> ws >> 
+    parse_alt_symbol_list << 
+    ws << char '}' << ws 
+
+  let parse_square = 
+    char '[' >> ws >> 
+    parse_alt_symbol_list << 
+    ws << char ']' << ws 
+
+let parse_symbol_complex : symbol_complex parser = fun input ->
+
+  match parse_curly input with
+  | Some (result, rest) -> Some (Rep result, rest)
+  | None -> 
+    match parse_square input with
+    | Some (result, rest) -> Some (Opt result, rest)
+    | None -> 
+      match parse_symbol input with
+      | Some (symbol, rest) -> Some (Sym symbol, rest)
+      | None -> None
 
 (* A sentential form is given by the following grammar:
 
@@ -267,8 +321,16 @@ let parse_symbol_complex : symbol_complex parser =
    sentential form.
 
 *)
-let parse_sentform : sentform parser = (* TODO *)
-  assert false
+let parse_sentform : sentform parser = fun cs ->
+  if cs = [] then None else 
+  match parse_symbols cs with 
+      | Some ([], []) -> Some ([], [])
+      | _ -> (
+        match many (parse_symbol_complex << ws) cs with
+        | Some (sf, rest) -> Some (sf, rest)
+        | None -> None 
+      )
+      
 
 (* A rule is given by the following grammar:
 
@@ -282,8 +344,24 @@ let parse_sentform : sentform parser = (* TODO *)
    rule, but you SHOULD consume whitespace after a rule.
 
 *)
-let parse_rule : rule list parser = (* TODO *)
-  assert false
+
+let ident_of =
+  function
+  | T id -> id
+  | NT nt -> nt
+  | NTRef (g, nt) -> nt
+
+let parse_alt : sentform list parser = 
+  map2
+    (fun x xs -> x :: xs)
+    parse_sentform
+    (many ((keyword "|") >> parse_sentform))
+
+let parse_rule : rule list parser =
+  map2
+    (fun nt alts -> List.map (fun alt -> (nt, alt)) alts)
+    ((keyword "RULE") >> parse_nonterm << ws << keyword "::=" >|= ident_of)
+    parse_alt
 
 (* A grammar is given by the following grammar:
 
@@ -292,8 +370,27 @@ let parse_rule : rule list parser = (* TODO *)
    For testing purposes you SHOULD NOT consume whitespace before a
    grammar, but you SHOULD consume whitespace and after a grammar.
 *)
-let parse_grammar : grammar parser = (* TODO *)
-  assert false
+
+let parse_begin = fun x -> 
+  match ((keyword "BEGIN") >> ws >> parse_g_ident << ws) x with 
+  | Some(g_ident, rest) -> (
+    Some(g_ident, rest)
+  )
+  |None -> Some("", [])
+
+let parse_grammar : grammar parser = fun x ->
+  match ((keyword "BEGIN") >> ws >> parse_g_ident << ws) x with 
+  | Some(g_ident, rest) -> (
+      match ((many (ws >> parse_rule) << keyword "END")) rest with
+      | Some(rules_list, rest_rules) -> (
+        let rules = List.concat rules_list in
+        Some((g_ident, rules), rest_rules)
+      )
+      | None -> None
+  )
+  | None -> None
+
+
 
 (* A collection grammars is given by the following grammar:
 
@@ -303,10 +400,10 @@ let parse_grammar : grammar parser = (* TODO *)
    after a collection of grammars.
 
 *)
-let parse_grammars : grammars parser = (* TODO *)
-  assert false
+let parse_grammars : grammars parser = 
+  ws >> many parse_grammar << ws 
 
-(* UNCOMMENT AS YOU COMPLETE THE ASSIGNMENT
+
 (* TEST CASES *)
 
 (* parse_term *)
@@ -395,18 +492,25 @@ let _ = assert (test = out)
 
 let test = parse parse_symbol_complex "{ <one> <two> | 'three' | EMPTY }"
 let out = Some (Rep [[NT "one"; NT "two"]; [T "three"]; []])
-
+let _ = assert (test = out)
 let test = parse parse_symbol_complex "[ <one> <two> | 'three' ]"
 let out = Some (Opt [[NT "one"; NT "two"]; [T "three"]])
 let _ = assert (test = out)
 
 let test = parse parse_symbol_complex "[ <one> <two> | 'three' | EMPTY ]"
 let out = Some (Opt [[NT "one"; NT "two"]; [T "three"]; []])
+let _ = assert (test = out)
+
+
 
 (* parse_sentform *)
 
 let test = parse parse_sentform "  \n"
 let out = None
+let _ = assert (test = out)
+
+let test = parse parse_sentform "<one><two> 'thr-ee' 'four' <fi-ve> '>' "
+let out = Some [Sym (NT "one"); Sym (NT "two"); Sym (T "thr-ee"); Sym (T "four"); Sym (NT "fi-ve"); Sym (T ">")]
 let _ = assert (test = out)
 
 let test = parse parse_sentform "EMPTY   "
@@ -421,9 +525,7 @@ let test = parse parse_sentform "<test>"
 let out = Some [Sym (NT "test")]
 let _ = assert (test = out)
 
-let test = parse parse_sentform "<one><two> 'thr-ee' 'four' <fi-ve> '>' "
-let out = Some [Sym (NT "one"); Sym (NT "two"); Sym (T "thr-ee"); Sym (T "four"); Sym (NT "fi-ve"); Sym (T ">")]
-let _ = assert (test = out)
+
 
 let test = parse parse_sentform " <one><two> 'thr-ee' 'four' <fi-ve> '>' "
 let out = None
@@ -436,6 +538,8 @@ let _ = assert (test = out)
 let test = parse parse_sentform "<factor> { '*' <factor> | '/' <factor> }  "
 let out = Some [Sym (NT "factor"); Rep [[T "*"; NT "factor"]; [T "/"; NT "factor"]]]
 let _ = assert (test = out)
+
+
 
 (* parse_rule *)
 
@@ -596,6 +700,6 @@ let out = Some
       )
     ]
 let _ = assert (test = out)
-
+(* UNCOMMENT AS YOU COMPLETE THE ASSIGNMENT
 (* END OF TEST CASES *)
 *)
