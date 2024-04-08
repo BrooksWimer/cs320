@@ -235,6 +235,8 @@ type command
   | Sub
   | Mul
   | Div
+  | Store
+  | Recall 
 
 (* Parsing floats
 
@@ -327,6 +329,8 @@ let parse_command : command parser = (* TODO *)
     (keyword "div" >| Div) <|>
     (keyword "pop" >| Pop) <|>
     (keyword "quit" >| Quit) <|>
+    (keyword "store" >| Store) <|>  
+    (keyword "recall" >| Recall) <|>
     (parse_float << ws >|= fun x -> Push x)
   in ws >> p
 
@@ -380,34 +384,38 @@ let _ = assert (test = out)
    You may return anything on the Quit command.
 
 *)
-let run_command (cmd : command) (stk : float list) : float list = (* TODO *)
+let run_command (cmd : command) ((stk, mem) : float list * float) : float list * float = (* TODO *)
   match cmd, stk with
-  | Quit, _ -> []
-  | Push x, stk -> x :: stk
-  | Pop, x :: rest -> rest
-  | Add, x :: y :: rest -> x +. y :: rest
-  | Sub, x :: y :: rest -> x -. y :: rest
-  | Mul, x :: y :: rest -> x *. y :: rest
-  | Div, x :: y :: rest -> x /. y :: rest
-  | _ -> stk
+  | Quit, _ -> ([], mem)
+  | Push x, stk -> (x :: stk, mem)
+  | Pop, x :: rest -> (rest, mem)
+  | Add, x :: y :: rest -> (x +. y :: rest, mem)
+  | Sub, x :: y :: rest -> (x -. y :: rest, mem)
+  | Mul, x :: y :: rest -> (x *. y :: rest, mem)
+  | Div, x :: y :: rest -> (x /. y :: rest, mem)
+  | Store, x :: _ -> (stk, x)
+  | Recall, _ -> (mem :: stk, mem)
+  | _ -> (stk, mem)
 
 (* TEST CASES *)
 
-let test = run_command Add []
-let out = []
+let test = run_command (Push 5.0) ([], 0.0)
+let out = ([5.0], 0.0)
 let _ = assert (test = out)
 
-let test = run_command Sub [2.; 3.; 5.; 6.]
-let out = [-1.; 5.; 6.]
+let test = run_command Add ([5.0; 10.0], 0.0)
+let out = ([15.0], 0.0)
 let _ = assert (test = out)
 
-let test = run_command Pop [2.; 3.; 5.; 6.]
-let out = [3.; 5.; 6.]
+let test = run_command Store ([10.0; 5.0], 0.0)
+let out = ([10.0; 5.0], 10.0)
 let _ = assert (test = out)
 
-let test = run_command (Push 3.001) [2.; 3.; 5.; 6.]
-let out = [3.001; 2.; 3.; 5.; 6.]
+(* Assuming memory already has a value of 10.0 *)
+let test = run_command Recall ([5.0], 10.0)
+let out = ([10.0; 5.0], 10.0)
 let _ = assert (test = out)
+
 
 (* END OF TEST CASES *)
 
@@ -416,21 +424,27 @@ let rec print_stack (stk : float list) : unit =
     match stk with
     | [] -> ()
     | x :: xs ->
-      let _ = print_string "  " ; print_endline (string_of_float x) in
+      print_string "  "; print_endline (string_of_float x);
       go xs
   in
-  print_endline "\n========" ;
-  go stk ;
+  print_endline "\n========";
+  go stk;
   print_endline "========\n"
 
-let rec repl stk : unit =
-  let continue stk = print_stack stk ; repl stk in
-  let input = print_string "RPN> " ; read_line () in
+
+let rec repl (stk : float list) (mem : float) : unit =
+  let continue stk mem = print_stack stk; repl stk mem in
+  print_string "RPN> "; 
+  let input = read_line () in
   match parse parse_command input with
   | Some Quit -> print_endline "Goodbye."
-  | Some cmd -> continue (run_command cmd stk)
+  | Some cmd -> 
+      let (new_stk, new_mem) = run_command cmd (stk, mem) in
+      continue new_stk new_mem
   | _ ->
-    print_endline "Could not parse. Try again." ;
-    continue stk
+      print_endline "Could not parse. Try again.";
+      continue stk mem
 
-(* let main = repl [] *)
+
+let main = repl [] 0.0
+
