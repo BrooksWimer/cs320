@@ -1,1 +1,12 @@
-def SQDIST ;
+def SQDIST
+  dup        
+  *          
+  swap       
+  dup        
+  *          
+  +          
+;
+
+
+
+
