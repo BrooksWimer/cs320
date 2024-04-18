@@ -366,13 +366,7 @@ let interp = fun x ->
     | None -> None
 
 
-<<<<<<< HEAD
-=======
-let update_env = assert false (* TODO *)
-let fetch_env = assert false (* TODO *)
-let eval_prog = assert false (* TODO *)
-let interp = assert false (* TODO *)
->>>>>>> upstream/main
+
 
 (* END OF PROJECT CODE *)
 
