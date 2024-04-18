@@ -1,1 +1,39 @@
-def FIB ;
+def FIBHELP
+  FIBVAL
+  CURR 
+  <
+  ?
+    CURR 1 + |> CURR 
+    dup 
+    FIBONE
+    + 
+    swap 
+    |> FIBONE
+    # FIBHELP
+  ;
+  
+;
+def FIB
+  dup
+  0 
+  =
+  ?
+    
+  ;
+  dup
+  1
+  =
+  ? 
+    
+  ;
+  dup 
+  2
+  <
+  ?
+    |> FIBVAL 
+    2 |> CURR 
+    1 |> FIBONE
+    1
+    # FIBHELP
+    ;
+;
