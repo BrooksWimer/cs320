@@ -380,13 +380,7 @@ let rec eval_step (c : stack * env * trace * program) =
   | _ :: _ :: _, _, _, If (q1, q2) :: _ -> panic c "type error (If-Else on non-boolean)"
   | [], _, _, If (q1, q2) :: _ -> panic c "stack underflow (If-Else on empty)"
   (* While *)
-  | s, e, t, While (q1, q2) :: p -> (
-      match eval_step (s, e, t, q1 @ p) with 
-      | Const (Bool true) :: s, _, _, _ -> s, e, t, q2 @ While (q1, q2) :: p 
-      | Const (Bool false) :: s, _, _, _ -> s, e, t, p 
-      | _ :: _, _, _, _ -> panic c "type error (While on non-boolean)"
-      | [], _, _, _ -> panic c "stack underflow (while on empty)"
-  )
+  | s, e, t, While (q1, q2) :: p -> s, e, t, q1 @ [If (q2 @ [While (q1, q2)], p)]
   (* Fetch *)
   | s, e, t, Fetch x :: p -> (
         match fetch_env e x with 
@@ -401,9 +395,9 @@ let rec eval_step (c : stack * env * trace * program) =
   (* Call *)
   | Clos {def_id; captured; prog} :: s, e, t, Call :: p -> (
                           let new_record = { 
-                            id = def_id 
-                          ; local = []
-                          ; called_def_id = local_id e
+                            id = def_id+1
+                          ; local = captured
+                          ; called_def_id = def_id
                           ; return_prog = p
                            } in
                           s, Local(new_record, e), t, prog
@@ -411,13 +405,20 @@ let rec eval_step (c : stack * env * trace * program) =
   | _, _, _, Call :: p -> panic c "type error (call on non-closure)"
   (* Function *) 
   | s, e, t, Fun prog :: p -> 
-        Clos {def_id = ((local_id e)+1); captured = []; prog = prog} :: s, e, t, p 
+        Clos {def_id = local_id e; captured = []; prog = prog} :: s, e, t, p 
   (* Return *)
+  | Clos {def_id; captured; prog} :: [], Local (record, remaining_env), t, Return :: p ->(
+      if (record.id) = def_id then 
+      let new_closure = Clos {def_id = record.called_def_id; captured = record.local; prog=prog} in 
+      [new_closure], remaining_env, t, record.return_prog
+      else 
+      [Clos {def_id; captured; prog}], remaining_env, t, record.return_prog
+  )
   | x :: [], Local (record, remaining_env), t, Return :: p -> [x], remaining_env, t, record.return_prog
   | [], Local (record, remaining_env), t, Return :: p -> [], remaining_env, t, record.return_prog
   | [], Local (record, remaining_env), t, [] -> [], remaining_env, t, record.return_prog
   | x :: y :: s, Local (record, remaining_env), t, Return :: p -> panic c "return error, too many values in stack"
-  | x :: s, Local (record, remaining_env), t, [] -> panic c "return error, value in stack without return call"
+  | x :: s, Local (record, remaining_env), t, [] -> panic c "return error, value in stack without return call" 
   | s, Global _, t, Return :: p -> panic c "return error, can't return in global enviornment" 
 
 (*
@@ -428,21 +429,22 @@ let rec shadowing curr_bindings old_bindings =
      
      | Clos [id; bindings; closure_prog] :: [], Local (record, remaining_env) :: e, t, Return :: p ->
       if id = record.id then 
-      let new_bindings = shadowing bindings record.local in 
-      [[record.id, ]]
+      
      *) 
-         
-
+ 
 
 let rec eval c =
   match c with
-  | (s, Global e, t, []) -> t
+  | (s, Global e, t, []) -> (s, e, t)
   | _ -> eval (eval_step c)
+
+
 
 let rec eval_prog p = eval ([], Global [], [], p)
 let interp s = Option.map eval_prog (parse_prog s)
 
-let test_string = "(f):
+let test_string = "
+(f):
   0 |> x
   (g):
     (h):
@@ -452,26 +454,72 @@ let test_string = "(f):
   ; #
   Return
 ; |> f
-f #"
 
-let test_string2 = " (f):
-  0 |> x 
-  : 3 |> x ; |> g 
-  g
-  Return
-  ; |> f f # 0 3"
 
-let test = parse_prog test_string2
+f # # |> q
 
-let test3 = interp test_string2
+(a):
+  1 |> x
+  q #
+; #
+"
 
+let test_string2 = " (fact): |> n
+  n |> i
+   1 |> out
+  While 0 i = ~ ;
+    out i * |> out
+     -1  i + |> i
+  ;
+  out Return
+; |> fact
+
+3 fact# ."
+
+
+
+let c = match (parse_prog test_string2) with 
+  | Some x -> ([], Global [], [], x)
+  | None -> ([], Global [], [], [])
 
 
 
 (*
-let test2 = match (parse_prog test_string2) with 
+
+let test3 = interp test_string2
+(
+      match eval_step (s, e, t, q1) with 
+      | Const (Bool true) :: s, _, _, _ -> s, e, t, q2 @ While (q1, q2) :: p 
+      | Const (Bool false) :: s, _, _, _ -> s, e, t, p 
+      | _ :: _, _, _, _ -> panic c "type error (While on non-boolean)"
+      | [], _, _, _ -> panic c "stack underflow (while on empty)"
+  )
+
+
+let testing_prog = ([],
+   Global
+    [("f",
+      Clos
+       {def_id = 0; captured = [];
+        prog =
+         [Push (Num 0); Bind "x"; Fun [Fun [Fetch "x"; Trace]; Return]; Call;
+          Return]})],
+   [], [Fetch "f"; Call])
+
+let test2 = eval_step testing_prog
+
+
+
+
+let test2 = match (parse_prog test_string) with 
   | Some x -> eval_step ([], Global [], [], x)
   | None -> ([], Global [], [], [])
+
+
+
+
+
+
 
 
 let test3 = eval_step ([Const (Bool false)], Global [], [],
