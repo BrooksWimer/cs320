@@ -25,5 +25,5 @@
   True Return
 ; |> is_prime
 
-"Is 15261281789861 prime? (yes):"
-15261281789861 is_prime # .
+
+11 is_prime # .
