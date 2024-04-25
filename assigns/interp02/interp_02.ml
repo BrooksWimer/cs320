@@ -380,7 +380,7 @@ let rec eval_step (c : stack * env * trace * program) =
   | _ :: _ :: _, _, _, If (q1, q2) :: _ -> panic c "type error (If-Else on non-boolean)"
   | [], _, _, If (q1, q2) :: _ -> panic c "stack underflow (If-Else on empty)"
   (* While *)
-  | s, e, t, While (q1, q2) :: p -> s, e, t, q1 @ [If (q2 @ [While (q1, q2)], p)]
+  | s, e, t, While (q1, q2) :: p -> s, e, t, q1 @ [If (q2 @ [While (q1, q2)], [])] @ p
   (* Fetch *)
   | s, e, t, Fetch x :: p -> (
         match fetch_env e x with 
@@ -435,7 +435,7 @@ let rec shadowing curr_bindings old_bindings =
 
 let rec eval c =
   match c with
-  | (s, Global e, t, []) -> (s, e, t)
+  | (s, Global e, t, []) -> t
   | _ -> eval (eval_step c)
 
 
@@ -456,7 +456,7 @@ let test_string = "
 ; |> f
 
 
-f # # |> q
+f # |> q
 
 (a):
   1 |> x
@@ -464,29 +464,72 @@ f # # |> q
 ; #
 "
 
-let test_string2 = " (fact): |> n
-  n |> i
-   1 |> out
-  While 0 i = ~ ;
-    out i * |> out
-     -1  i + |> i
+let test_string2 = " (fib): |> n
+  (if)
+    n 0 =
+    n 1 =
+    || ?
+  (then)
+    n Return ;
+  (else)
+    -1 n + fib # |> x
+    -2 n + fib # |> y
+    x y + Return ;
+; |> fib
+
+8 fib # .
+
+(print_fib): |> n
+  0 |> count
+  While count n = ~ ;
+    count fib # .
+    count 1 + |> count
   ;
-  out Return
-; |> fact
+; |> print_fib
 
-3 fact# ."
+8 print_fib# "
+
+let test_string3 = "(sqrt): |> n
+  (if) 0 n < ? Return ; ;
+  (if) 0 n = ? 0 Return ; ;
+  0 |> i
+  While n 1 + i < ;
+    (if) i i * n < ?
+      i -1 + Return ;
+    (else)
+      i 1 + |> i
+    ;
+  ;
+; |> sqrt
+
+(is_prime): |> n
+  (if) 2 n < ? False Return ; ;
+  2 |> i
+  n sqrt # |> s
+  While s 1 + i < ;
+    (if) i n / i * n = ?
+      False Return ;
+    (else)
+      i 1 + |> i
+    ;
+  ;
+  True Return
+; |> is_prime
+
+11 is_prime # . "
 
 
+let test3 = interp test_string
 
-let c = match (parse_prog test_string2) with 
-  | Some x -> ([], Global [], [], x)
-  | None -> ([], Global [], [], [])
+
 
 
 
 (*
+let c = match (parse_prog test_string3) with 
+  | Some x -> ([], Global [], [], x)
+  | None -> ([], Global [], [], [])
 
-let test3 = interp test_string2
 (
       match eval_step (s, e, t, q1) with 
       | Const (Bool true) :: s, _, _, _ -> s, e, t, q2 @ While (q1, q2) :: p 
