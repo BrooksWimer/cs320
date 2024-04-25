@@ -9,7 +9,6 @@
   ;
 ; |> fact
 
-"factorial of 5:"
 5 fact# .
 
 (fact): |> n
@@ -22,6 +21,4 @@
   out Return
 ; |> fact
 
-""
-"factorial of 6:"
 6  fact# .

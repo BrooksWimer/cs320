@@ -11,7 +11,6 @@
     x y + Return ;
 ; |> fib
 
-"10th Fibonacci Number:"
 10 fib # .
 
 (print_fib): |> n
@@ -22,6 +21,5 @@
   ;
 ; |> print_fib
 
-""
-"The first 10 Fibonacci Numbers:"
+
 10 print_fib #

@@ -364,7 +364,6 @@ let rec eval_step (c : stack * env * trace * program) =
   | _ :: _ :: _, _, _, And :: _ -> panic c "type error (&& on non-booleans)"
   | _ :: [], _, _, And :: _ -> panic c "stack underflow (&& on single)"
   | [], _, _, And :: _ -> panic c "stack underflow (&& on empty)"
-  | _, _, _, [And] -> panic c "stack underflow (&& not recognized)"
   (* Or *)
   | Const (Bool m) :: Const (Bool n) :: s, e, t, Or :: p -> Const (Bool (m || n)) :: s, e, t, p
   | _ :: _ :: _, _, _, Or :: _ -> panic c "type error (|| on non-booleans)"
@@ -421,16 +420,7 @@ let rec eval_step (c : stack * env * trace * program) =
   | x :: s, Local (record, remaining_env), t, [] -> panic c "return error, value in stack without return call" 
   | s, Global _, t, Return :: p -> panic c "return error, can't return in global enviornment" 
 
-(*
-let rec shadowing curr_bindings old_bindings = 
-  match curr_bindings with 
-  | [] -> old_bindings 
-  | (var_name, val) :: remaining_bindings -> shadowing remaining_bindings (update_or_add old_bindings var_name val)
-     
-     | Clos [id; bindings; closure_prog] :: [], Local (record, remaining_env) :: e, t, Return :: p ->
-      if id = record.id then 
-      
-     *) 
+
  
 
 let rec eval c =
@@ -443,6 +433,31 @@ let rec eval c =
 let rec eval_prog p = eval ([], Global [], [], p)
 let interp s = Option.map eval_prog (parse_prog s)
 
+let print_trace t =
+  let rec go t =
+    match t with
+    | [] -> ()
+    | x :: t ->
+      print_endline x;
+      go t
+  in go (List.rev t)
+
+let main () =
+  let input =
+    let rec get_input s =
+      try
+        get_input (s ^ "\n" ^ read_line ())
+      with End_of_file ->
+        s
+    in get_input ""
+  in
+  match interp input with
+  | None -> print_endline "Parse Error"
+  | Some t -> print_trace t
+
+let _ = main () 
+
+(*
 let test_string = "
 (f):
   0 |> x
@@ -523,9 +538,18 @@ let test3 = interp test_string
 
 
 
-
-
 (*
+let rec shadowing curr_bindings old_bindings = 
+  match curr_bindings with 
+  | [] -> old_bindings 
+  | (var_name, val) :: remaining_bindings -> shadowing remaining_bindings (update_or_add old_bindings var_name val)
+     
+     | Clos [id; bindings; closure_prog] :: [], Local (record, remaining_env) :: e, t, Return :: p ->
+      if id = record.id then 
+      
+     *) 
+
+
 let c = match (parse_prog test_string3) with 
   | Some x -> ([], Global [], [], x)
   | None -> ([], Global [], [], [])
@@ -584,31 +608,9 @@ let test3 = eval_step2 ([Const (Num 2)], Global [], [], [Bind "x"])
 
 
 let test2 = interp test_string2
+*)
 (* MAIN *)
 
-let print_trace t =
-  let rec go t =
-    match t with
-    | [] -> ()
-    | x :: t ->
-      print_endline x;
-      go t
-  in go (List.rev t)
 
-let main () =
-  let input =
-    let rec get_input s =
-      try
-        get_input (s ^ "\n" ^ read_line ())
-      with End_of_file ->
-        s
-    in get_input ""
-  in
-  match interp input with
-  | None -> print_endline "Parse Error"
-  | Some t -> print_trace t
-
-(* let _ = main () *)
 
 (* END OF FILE *)
-*)

@@ -9,6 +9,5 @@
   Return
 ; |> f
 
-"Calling the output of f (should print 0):"
 f # |> g
 g #
