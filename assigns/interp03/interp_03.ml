@@ -511,11 +511,54 @@ let _ = print_fib 5
   "
 
 let x = " 
-let divide y z = y + z 
-let _ = divide 3 2
+let x _ =
+  let _ = trace 10 in
+  10
+
+let y _ =
+  let _ = trace 7 in
+  7
+
+let _ = trace (x () + y ())
 "
+let y = "let x _ =
+  let _ = trace 10 in
+  10
 
+let y _ =
+  let _ = trace true in
+  true
+let _ = trace (x () + y ())"
 
+let z = "
+let x _ =
+  let _ = trace true in
+  true
+
+let y _ =
+  let _ = trace false in
+  false
+  let _ = x () || y ()
+let _ = y () || x ()
+let _ = x () && y ()
+let _ = y () && x ()
+  "
+let f = 
+"
+let abs n =
+  if n < 0 then -n else n
+
+let _ = trace (abs (-10))
+"
+let j = 
+"
+let go a b n =
+  trace (a + b + n)
+
+   
+
+let _ = go 3 4 9 
+  "
 
 (*  PROJECT 3 *)
 
@@ -531,123 +574,125 @@ type lexpr
   | App of lexpr * lexpr
   | Trace of lexpr
 
-let rec desugar_variables vars expr =  
-  match vars with 
-  | [] -> desugar_expr expr
-  | x :: xs -> Fun (x, (desugar_variables xs expr))
 
-and desugar_expr expr = 
-  match expr with 
-  | Let (ident, vars, e1, e2) -> App (Fun (ident, desugar_expr e2), desugar_expr e1)
-  | Fun (id_list, e) -> desugar_variables id_list e
-  | App (e1, e2) -> App (desugar_expr e1, desugar_expr e2)
-  | Uop (uop, e1) -> Uop (uop, desugar_expr e1)
-  | Bop (bop, e1, e2) -> Bop (bop, desugar_expr e1, desugar_expr e2)
-  | Ife (e1, e2, e3) -> Ife (desugar_expr e1, desugar_expr e2, desugar_expr e3)
-  | Trace e -> Trace (desugar_expr e)
-  | Bool b -> Bool b 
-  | Unit -> Unit 
+
+
+let rec desugar_expr (e : expr) : lexpr =
+  match e with
+  | Unit -> Unit
+  | Num n -> Num n
+  | Bool b -> Bool b
   | Var v -> Var v
-  | Num n -> Num n 
+  | Uop (op, exp) -> Uop (op, desugar_expr exp)
+  | Bop (op, exp1, exp2) -> Bop (op, desugar_expr exp1, desugar_expr exp2)
+  | Fun (args, exp) -> List.fold_right (fun arg acc -> Fun (arg, acc)) args (desugar_expr exp)
+  | App (exp1, exp2) -> App (desugar_expr exp1, desugar_expr exp2)
+  | Let (id, args, exp1, exp2) ->
+    App (
+      Fun (id, desugar_expr exp2),
+      desugar_expr exp1
+    )
+  | Ife (b, l, r) -> Ife (desugar_expr b, desugar_expr l, desugar_expr r)
+  | Trace exp -> Trace (desugar_expr exp)
 
-let rec desugar_helper = function 
-  | (fun_name, var_list, expr) -> Fun (fun_name, (desugar_variables var_list expr)) 
-
-let rec desugar = function
-  | x :: [] -> [desugar_helper x]
-  | x :: xs -> desugar_helper x :: desugar xs 
-  
-
-let test_desuger =
-  match parse_top_prog x with
-  | Some p -> Some (desugar p)
-  | None -> None
-
-let show_parsed =
-  match parse_top_prog x with
-  | Some p -> Some p
-  | None -> None
-
-
-
-
-let rec trans_help (e : lexpr) : stack_prog = 
-  match e with 
-  | Fun (fun_name, lexpr1) -> 
-      (match lexpr1 with 
-      | Num x -> [Push (Num x); Assign fun_name]
-      | Bool b -> [Push (Bool b); Assign fun_name]
-      | _ -> [Fun (fun_name, trans_help lexpr1)]
+let rec desugar (p : top_prog) : lexpr =
+    match p with
+    | [] -> Unit  (* No expressions result in the Unit low-level expression *)
+    | (id, args, expr) :: rest ->
+      (* Process a single top-level 'let' definition and recur for the rest *)
+      let recur_desugar = desugar rest in
+      let desugared_expr = desugar_expr expr in
+      App (
+        Fun (id, match args with
+             | [] -> recur_desugar
+             | _ -> List.fold_right (fun arg acc -> Fun (arg, acc)) args recur_desugar),
+        desugared_expr
       )
-  | Ife (lexpr1, lexpr2, lexpr3) -> 
-      trans_help lexpr1 @ [If (trans_help lexpr2, trans_help lexpr3)]
-  | Bop (bop, lexpr1, lexpr2) -> 
-      (match bop with 
-      | Add -> trans_help lexpr1 @ trans_help lexpr2 @ [Add]
-      | Sub -> trans_help lexpr1 @ trans_help lexpr2 @ [Sub]
-      | Mul -> trans_help lexpr1 @ trans_help lexpr2 @ [Mul]
-      | Div -> trans_help lexpr1 @ trans_help lexpr2 @ [Div]
-      | Lt -> trans_help lexpr1 @ trans_help lexpr2 @ [Lt]
-      | Lte -> trans_help lexpr1 @ trans_help lexpr2 @ [Lt; If ([Push (Bool true)], trans_help lexpr2 @ trans_help lexpr1 @ [Lt; If ([Push (Bool false)], [Push (Bool true)])])]
-      | Eq -> trans_help lexpr1 @ trans_help lexpr2 @ [Lt; If ([Push (Bool false)], trans_help lexpr2 @ trans_help lexpr1 @ [Lt; If ([Push (Bool false)], [Push (Bool true)])])]
-      | Gte -> trans_help lexpr1 @ trans_help lexpr2 @ [Lt; If ([Push (Bool false)], [Push (Bool true)])]
-      | Gt -> trans_help (Bop (Lte, lexpr2, lexpr1))
-      | And -> trans_help lexpr1 @ [If (trans_help lexpr2, [Push (Bool false)]); If ([Push (Bool true)], [Push (Bool false)])]
-      | Or -> trans_help lexpr1 @ [If ([Push (Bool true)], trans_help lexpr2)]
-      | Neq -> trans_help (Bop (Eq, lexpr2, lexpr1)) @ [If ([Push (Bool false)], [Push (Bool true)])]
-      )
-  | Uop (uop, lexpr1) ->
-      ( match uop with 
-      | Neg -> trans_help lexpr1 @ [Push (Num 0); Sub]
-      | Not -> trans_help lexpr1 @ [If ([Push (Bool false)], [Push (Bool true)])]
-      )
-  | Num x -> [Push (Num x)]
-  | Bool b -> [Push (Bool b)] 
-  | Unit -> [Push Unit]
-  | App (lexpr1, lexpr2) -> trans_help lexpr2 @ trans_help lexpr1
-  | Var y -> [Lookup y]
 
 
-let rec translate = function 
-  | [] -> []
-  | x :: xs -> trans_help x @ translate xs
+let rec translate expr =
+  match expr with
+  | Num n -> [Push (Num n)]
+  | Bool b -> [Push (Bool b)]
+  | Var x -> [Lookup x]
+  | Uop (op, e) ->
+    let commands = translate e in
+    begin match op with
+      | Neg -> commands @ [Push (Num (-1)); Mul]  (* If negation on integers is allowed *)
+      | Not ->
+        commands @
+        [If ([Push (Bool false)], [Push (Bool true)])]  (* Flip true/false based on top of the stack *)
+    end
+  | Bop (op, e1, e2) ->
+    let commands1 = translate e1 in
+    let commands2 = translate e2 in
+    begin match op with
+      | Add -> commands2 @ commands1 @ [Add]
+      | Sub -> commands2 @ commands1 @ [Sub]
+      | Mul -> commands2 @ commands1 @ [Mul]
+      | Div -> commands2 @ commands1 @ [Div]
+      | And ->
+        (* Simulate AND by using if-else to check both values are true *)
+        commands2 @ commands1 @
+        [If ([Push (Bool true)], [Push (Bool false)])]  (* Checks if both are true *)
+      | Or ->
+        (* Simulate OR without using Pop; essentially, use reevaluation *)
+        commands2 @ commands1 @
+        [If ([Push (Bool true)], [If ([Push (Bool true)], [Push (Bool false)])])]  (* If first is true, keep true, else reevaluate second *)
+      | _ -> failwith "Operator not supported"
+    end
+  | Ife (cond, et, ef) ->
+    let cond_commands = translate cond in
+    let then_commands = translate et in
+    let else_commands = translate ef in
+    cond_commands @ [If (then_commands, else_commands)]
+  | Fun (arg, body) ->
+    let body_commands = translate body in
+    [Fun (arg, body_commands)]
+  | App (e1, e2) ->
+    let func_commands = translate e1 in
+    let arg_commands = translate e2 in
+    arg_commands @ func_commands @ [Call]
+  | Trace e ->
+    let expr_commands = translate e in
+    expr_commands @ [Trace]
+  | _ -> failwith "Expression type not supported"
+
+let capitalize_string s =
+  String.map Char.uppercase_ascii s
+
+let rec serialize (p : stack_prog) : string = 
+  let command_to_string cmd =
+    match cmd with
+    | Push (Num n) -> "push " ^ string_of_int n
+    | Push (Bool b) -> "push " ^ (if b then "true" else "false")
+    | Push Unit -> "push unit "
+    | Swap -> "swap "
+    | Trace -> "trace "
+    | Add -> "add "
+    | Sub -> "sub "
+    | Mul -> "mul "
+    | Div -> "div "
+    | Lt -> "lt "
+    | If (p1, p2) ->
+        "if\n " ^ serialize p1 ^ "\nelse\n " ^ serialize p2 ^ "\nend "
+    | Fun (name, body) ->
+        "fun " ^ name ^ " begin\n " ^ serialize body ^ "\nend "
+    | Call -> "call "
+    | Return -> "return "
+    | Assign name -> "assign " ^ capitalize_string name
+    | Lookup name -> "lookup " ^ capitalize_string name
+  in
+  String.concat "\n" (List.map command_to_string p)
 
 
-
-let test_translate =
-  match parse_top_prog x with
-  | Some p -> Some (translate (desugar p))
-  | None -> None
-
-(*
-
-
-and command
-  = Push of const | Swap | Trace
-  | Add | Sub | Mul | Div | Lt
-  | If of stack_prog * stack_prog
-  | Fun of ident * stack_prog | Call | Return
-  | Assign of ident | Lookup of ident
-
-
-type uop
-  = Neg | Not
-type bop
-  = Add | Sub | Mul | Div
-  | And | Or
-  | Lt  | Lte | Gt | Gte | Eq |Neq
-
-
-let desugar (p : top_prog) : lexpr = Unit (* TODO *)
-let translate (e : lexpr) : stack_prog = [] (* TODO *)
-let serialize (p : stack_prog) : string = "" (* TODO *)
 
 let compile (s : string) : string option =
-  match parse_top_prog s with
+  match parse_top_prog f with
   | Some p -> Some (serialize (translate (desugar p)))
   | None -> None
 
 (* ============================================================ *)
 
 (* END OF FILE *)
-*)
+
